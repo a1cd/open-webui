@@ -423,6 +423,8 @@ from open_webui.env import (
     ENABLE_OTEL,
     EXTERNAL_PWA_MANIFEST_URL,
     AIOHTTP_CLIENT_SESSION_SSL,
+    DISABLE_BACKGROUND_SERVICES,
+    LAZY_LOAD_MODELS,
 )
 
 
@@ -536,9 +538,15 @@ async def lifespan(app: FastAPI):
         limiter = anyio.to_thread.current_default_thread_limiter()
         limiter.total_tokens = THREAD_POOL_SIZE
 
-    asyncio.create_task(periodic_usage_pool_cleanup())
+    # Only start background services if not disabled for memory optimization
+    if not DISABLE_BACKGROUND_SERVICES:
+        asyncio.create_task(periodic_usage_pool_cleanup())
+        log.info("Background services started")
+    else:
+        log.info("Background services disabled for memory optimization")
 
     if app.state.config.ENABLE_BASE_MODELS_CACHE:
+        log.info("Loading base models cache...")
         await get_all_models(
             Request(
                 # Creating a mock request object to pass to get_all_models
@@ -558,6 +566,8 @@ async def lifespan(app: FastAPI):
             ),
             None,
         )
+    else:
+        log.info("Base models cache disabled for memory optimization")
 
     yield
 
@@ -886,60 +896,80 @@ app.state.rf = None
 app.state.YOUTUBE_LOADER_TRANSLATION = None
 
 
-try:
-    app.state.ef = get_ef(
-        app.state.config.RAG_EMBEDDING_ENGINE,
-        app.state.config.RAG_EMBEDDING_MODEL,
-        RAG_EMBEDDING_MODEL_AUTO_UPDATE,
-    )
+def lazy_init_embedding_functions():
+    """Initialize embedding functions only when needed to save memory at startup"""
+    if app.state.config.BYPASS_EMBEDDING_AND_RETRIEVAL:
+        log.info("Embedding and retrieval bypassed, skipping initialization")
+        return
+    
+    if app.state.EMBEDDING_FUNCTION is None:
+        try:
+            log.info("Lazy-loading embedding functions...")
+            app.state.ef = get_ef(
+                app.state.config.RAG_EMBEDDING_ENGINE,
+                app.state.config.RAG_EMBEDDING_MODEL,
+                RAG_EMBEDDING_MODEL_AUTO_UPDATE,
+            )
 
-    app.state.rf = get_rf(
-        app.state.config.RAG_RERANKING_ENGINE,
-        app.state.config.RAG_RERANKING_MODEL,
-        app.state.config.RAG_EXTERNAL_RERANKER_URL,
-        app.state.config.RAG_EXTERNAL_RERANKER_API_KEY,
-        RAG_RERANKING_MODEL_AUTO_UPDATE,
-    )
-except Exception as e:
-    log.error(f"Error updating models: {e}")
-    pass
+            app.state.rf = get_rf(
+                app.state.config.RAG_RERANKING_ENGINE,
+                app.state.config.RAG_RERANKING_MODEL,
+                app.state.config.RAG_EXTERNAL_RERANKER_URL,
+                app.state.config.RAG_EXTERNAL_RERANKER_API_KEY,
+                RAG_RERANKING_MODEL_AUTO_UPDATE,
+            )
+            
+            app.state.EMBEDDING_FUNCTION = get_embedding_function(
+                app.state.config.RAG_EMBEDDING_ENGINE,
+                app.state.config.RAG_EMBEDDING_MODEL,
+                embedding_function=app.state.ef,
+                url=(
+                    app.state.config.RAG_OPENAI_API_BASE_URL
+                    if app.state.config.RAG_EMBEDDING_ENGINE == "openai"
+                    else (
+                        app.state.config.RAG_OLLAMA_BASE_URL
+                        if app.state.config.RAG_EMBEDDING_ENGINE == "ollama"
+                        else app.state.config.RAG_AZURE_OPENAI_BASE_URL
+                    )
+                ),
+                key=(
+                    app.state.config.RAG_OPENAI_API_KEY
+                    if app.state.config.RAG_EMBEDDING_ENGINE == "openai"
+                    else (
+                        app.state.config.RAG_OLLAMA_API_KEY
+                        if app.state.config.RAG_EMBEDDING_ENGINE == "ollama"
+                        else app.state.config.RAG_AZURE_OPENAI_API_KEY
+                    )
+                ),
+                embedding_batch_size=app.state.config.RAG_EMBEDDING_BATCH_SIZE,
+                azure_api_version=(
+                    app.state.config.RAG_AZURE_OPENAI_API_VERSION
+                    if app.state.config.RAG_EMBEDDING_ENGINE == "azure_openai"
+                    else None
+                ),
+            )
+
+            app.state.RERANKING_FUNCTION = get_reranking_function(
+                app.state.config.RAG_RERANKING_ENGINE,
+                app.state.config.RAG_RERANKING_MODEL,
+                reranking_function=app.state.rf,
+            )
+            log.info("Embedding functions initialized successfully")
+        except Exception as e:
+            log.error(f"Error lazy-loading embedding functions: {e}")
+            # Set to empty functions to prevent repeated initialization attempts
+            app.state.EMBEDDING_FUNCTION = lambda x: []
+            app.state.RERANKING_FUNCTION = lambda x, y: x
 
 
-app.state.EMBEDDING_FUNCTION = get_embedding_function(
-    app.state.config.RAG_EMBEDDING_ENGINE,
-    app.state.config.RAG_EMBEDDING_MODEL,
-    embedding_function=app.state.ef,
-    url=(
-        app.state.config.RAG_OPENAI_API_BASE_URL
-        if app.state.config.RAG_EMBEDDING_ENGINE == "openai"
-        else (
-            app.state.config.RAG_OLLAMA_BASE_URL
-            if app.state.config.RAG_EMBEDDING_ENGINE == "ollama"
-            else app.state.config.RAG_AZURE_OPENAI_BASE_URL
-        )
-    ),
-    key=(
-        app.state.config.RAG_OPENAI_API_KEY
-        if app.state.config.RAG_EMBEDDING_ENGINE == "openai"
-        else (
-            app.state.config.RAG_OLLAMA_API_KEY
-            if app.state.config.RAG_EMBEDDING_ENGINE == "ollama"
-            else app.state.config.RAG_AZURE_OPENAI_API_KEY
-        )
-    ),
-    embedding_batch_size=app.state.config.RAG_EMBEDDING_BATCH_SIZE,
-    azure_api_version=(
-        app.state.config.RAG_AZURE_OPENAI_API_VERSION
-        if app.state.config.RAG_EMBEDDING_ENGINE == "azure_openai"
-        else None
-    ),
-)
+# Store the lazy init function for later use
+app.state.lazy_init_embedding_functions = lazy_init_embedding_functions
 
-app.state.RERANKING_FUNCTION = get_reranking_function(
-    app.state.config.RAG_RERANKING_ENGINE,
-    app.state.config.RAG_RERANKING_MODEL,
-    reranking_function=app.state.rf,
-)
+# Only initialize at startup if embedding/retrieval is not bypassed
+if not app.state.config.BYPASS_EMBEDDING_AND_RETRIEVAL:
+    log.info("Embedding and retrieval enabled - will lazy-load on first use")
+else:
+    log.info("Embedding and retrieval bypassed - skipping initialization to save memory")
 
 ########################################
 #

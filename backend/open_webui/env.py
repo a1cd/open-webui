@@ -201,6 +201,17 @@ SAFE_MODE = os.environ.get("SAFE_MODE", "false").lower() == "true"
 
 
 ####################################
+# MEMORY OPTIMIZATION SETTINGS
+####################################
+
+# Disable background services for minimal memory usage
+DISABLE_BACKGROUND_SERVICES = os.environ.get("DISABLE_BACKGROUND_SERVICES", "false").lower() == "true"
+
+# Use lazy loading for heavy ML components
+LAZY_LOAD_MODELS = os.environ.get("LAZY_LOAD_MODELS", "true").lower() == "true"
+
+
+####################################
 # ENABLE_FORWARD_USER_INFO_HEADERS
 ####################################
 

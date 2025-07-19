@@ -115,6 +115,13 @@ log.setLevel(SRC_LOG_LEVELS["RAG"])
 ##########################################
 
 
+def ensure_embedding_functions_initialized(request):
+    """Ensure embedding functions are initialized before use"""
+    if hasattr(request.app.state, 'lazy_init_embedding_functions') and request.app.state.EMBEDDING_FUNCTION is None:
+        request.app.state.lazy_init_embedding_functions()
+    return request.app.state.EMBEDDING_FUNCTION, request.app.state.RERANKING_FUNCTION
+
+
 def get_ef(
     engine: str,
     embedding_model: str,

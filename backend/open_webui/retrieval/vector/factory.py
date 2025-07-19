@@ -52,4 +52,15 @@ class Vector:
                 raise ValueError(f"Unsupported vector type: {vector_type}")
 
 
-VECTOR_DB_CLIENT = Vector.get_vector(VECTOR_DB)
+# Lazy-loaded vector database client
+_vector_db_client = None
+
+def get_vector_db_client():
+    """Get vector database client with lazy loading"""
+    global _vector_db_client
+    if _vector_db_client is None:
+        _vector_db_client = Vector.get_vector(VECTOR_DB)
+    return _vector_db_client
+
+# For backward compatibility
+VECTOR_DB_CLIENT = get_vector_db_client()
