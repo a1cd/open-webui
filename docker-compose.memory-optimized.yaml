@@ -1,0 +1,75 @@
+# Docker Compose configuration for memory-optimized Open WebUI
+# Targets <200MB RAM usage vs default 500MB+
+
+version: '3.8'
+
+services:
+  open-webui-memory-optimized:
+    image: open-webui/open-webui:latest
+    container_name: open-webui-minimal
+    environment:
+      # Core memory optimizations
+      - DISABLE_BACKGROUND_SERVICES=true
+      - LAZY_LOAD_MODELS=true
+      - ENABLE_BASE_MODELS_CACHE=false
+      
+      # Disable heavy features
+      - BYPASS_EMBEDDING_AND_RETRIEVAL=true
+      - BYPASS_WEB_SEARCH_EMBEDDING_AND_RETRIEVAL=true
+      
+      # Use lightweight database
+      - DATABASE_URL=sqlite:///app/backend/data/webui.db
+      
+      # Disable optional components
+      - ENABLE_IMAGE_GENERATION=false
+      - ENABLE_CODE_EXECUTION=false
+      - ENABLE_WEB_SEARCH=false
+      
+      # Minimal permissions
+      - USER_PERMISSIONS_CHAT_STT=false
+      - USER_PERMISSIONS_CHAT_TTS=false
+      
+      # Disable non-essential features
+      - ENABLE_NOTES=false
+      - ENABLE_CHANNELS=false
+      - ENABLE_COMMUNITY_SHARING=false
+      - ENABLE_MESSAGE_RATING=false
+      
+      # Disable telemetry
+      - ENABLE_OTEL=false
+      - ENABLE_VERSION_UPDATE_CHECK=false
+      
+      # Conservative resource limits
+      - CHUNK_SIZE=500
+      - CHUNK_OVERLAP=50
+      - RAG_TOP_K=3
+      - RAG_FILE_MAX_SIZE=2097152
+      - RAG_FILE_MAX_COUNT=5
+      
+    volumes:
+      - open-webui-data:/app/backend/data
+    ports:
+      - "3000:8080"
+    restart: unless-stopped
+    
+    # Set memory limits to enforce optimization
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+    
+    # Use minimal user for security
+    user: "1000:1000"
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  open-webui-data:
+    driver: local

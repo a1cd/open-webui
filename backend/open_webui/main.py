@@ -61,11 +61,8 @@ from open_webui.socket.main import (
     get_active_user_ids,
 )
 from open_webui.routers import (
-    audio,
-    images,
     ollama,
     openai,
-    retrieval,
     pipelines,
     tasks,
     auths,
@@ -87,12 +84,25 @@ from open_webui.routers import (
     utils,
 )
 
-from open_webui.routers.retrieval import (
-    get_embedding_function,
-    get_reranking_function,
-    get_ef,
-    get_rf,
-)
+# Heavy routers will be imported conditionally later
+# audio, images, retrieval are imported only when needed
+
+# Import retrieval functions conditionally when needed
+get_embedding_function = None
+get_reranking_function = None
+get_ef = None
+get_rf = None
+
+def load_retrieval_functions():
+    """Load retrieval functions only when needed"""
+    global get_embedding_function, get_reranking_function, get_ef, get_rf
+    if get_embedding_function is None:
+        from open_webui.routers.retrieval import (
+            get_embedding_function,
+            get_reranking_function,
+            get_ef,
+            get_rf,
+        )
 
 from open_webui.internal.db import Session, engine
 
@@ -905,6 +915,10 @@ def lazy_init_embedding_functions():
     if app.state.EMBEDDING_FUNCTION is None:
         try:
             log.info("Lazy-loading embedding functions...")
+            
+            # Load retrieval functions first
+            load_retrieval_functions()
+            
             app.state.ef = get_ef(
                 app.state.config.RAG_EMBEDDING_ENGINE,
                 app.state.config.RAG_EMBEDDING_MODEL,
@@ -1210,10 +1224,23 @@ app.include_router(openai.router, prefix="/openai", tags=["openai"])
 
 app.include_router(pipelines.router, prefix="/api/v1/pipelines", tags=["pipelines"])
 app.include_router(tasks.router, prefix="/api/v1/tasks", tags=["tasks"])
-app.include_router(images.router, prefix="/api/v1/images", tags=["images"])
 
-app.include_router(audio.router, prefix="/api/v1/audio", tags=["audio"])
-app.include_router(retrieval.router, prefix="/api/v1/retrieval", tags=["retrieval"])
+# Conditionally include heavy routers to save memory
+if not DISABLE_BACKGROUND_SERVICES:
+    from open_webui.routers import images, audio
+    app.include_router(images.router, prefix="/api/v1/images", tags=["images"])
+    app.include_router(audio.router, prefix="/api/v1/audio", tags=["audio"])
+    log.info("Image and audio routers enabled")
+else:
+    log.info("Image and audio routers disabled for memory optimization")
+
+# Only include retrieval router if embedding/retrieval is not bypassed
+if not app.state.config.BYPASS_EMBEDDING_AND_RETRIEVAL:
+    from open_webui.routers import retrieval
+    app.include_router(retrieval.router, prefix="/api/v1/retrieval", tags=["retrieval"])
+    log.info("Retrieval router enabled")
+else:
+    log.info("Retrieval router disabled for memory optimization")
 
 app.include_router(configs.router, prefix="/api/v1/configs", tags=["configs"])
 
