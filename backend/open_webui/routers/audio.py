@@ -5,14 +5,20 @@ import os
 import uuid
 from functools import lru_cache
 from pathlib import Path
-from pydub import AudioSegment
-from pydub.silence import split_on_silence
 from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
 
 from fnmatch import fnmatch
 import aiohttp
 import aiofiles
+
+# Lazy import heavy audio processing libraries
+from open_webui.utils.optimized_loading import LazyImport, get_module_attr
+
+# These are only needed when audio processing features are used
+pydub = LazyImport('pydub')
+AudioSegment = get_module_attr('pydub', 'AudioSegment')
+split_on_silence = get_module_attr('pydub.silence', 'split_on_silence')
 import requests
 import mimetypes
 from urllib.parse import quote
