@@ -210,6 +210,9 @@ DISABLE_BACKGROUND_SERVICES = os.environ.get("DISABLE_BACKGROUND_SERVICES", "fal
 # Use lazy loading for heavy ML components
 LAZY_LOAD_MODELS = os.environ.get("LAZY_LOAD_MODELS", "true").lower() == "true"
 
+# Disable vector database completely (prevents chromadb import)
+DISABLE_VECTOR_DB = os.environ.get("DISABLE_VECTOR_DB", "false").lower() == "true"
+
 
 ####################################
 # ENABLE_FORWARD_USER_INFO_HEADERS

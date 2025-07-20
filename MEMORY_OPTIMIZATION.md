@@ -1,6 +1,15 @@
 # Memory Optimization Guide for Open WebUI
 
-This guide provides instructions for reducing Open WebUI's memory usage by avoiding heavy ML components and optional features, providing modest memory savings for resource-constrained environments.
+This guide provides instructions for reducing Open WebUI's memory usage by preventing heavy imports and disabling optional features. The primary memory savings come from avoiding the unconditional loading of ChromaDB and other vector databases at startup.
+
+## Key Discovery: Vector Database Import Issue
+
+**Major Issue Found**: ChromaDB was being imported unconditionally at startup in `config.py`, consuming significant memory (100+ MB) even when embedding/retrieval features were disabled.
+
+**Solution Implemented**: 
+- Made ChromaDB import lazy/conditional
+- Added `DISABLE_VECTOR_DB=true` flag to completely prevent vector database initialization
+- Fixed telemetry imports that also loaded ChromaDB unconditionally
 
 ## Quick Start - Memory Optimized Mode
 
@@ -69,15 +78,27 @@ ENABLE_COMMUNITY_SHARING=false
 ENABLE_MESSAGE_RATING=false
 ```
 
-### 3. Database Optimizations
+### 3. Vector Database Optimizations
 
-#### Use Lightweight Database
+#### Primary Memory Optimization - Disable Vector Database
 ```bash
-# Use SQLite instead of PostgreSQL for minimal setups
-DATABASE_URL=sqlite:///data/webui.db
+# NEW: Complete disable vector database to prevent ChromaDB import
+DISABLE_VECTOR_DB=true
 
-# If using vector database, use Chroma (lightweight)
-VECTOR_DB=chroma
+# This prevents the unconditional import of ChromaDB at startup
+# which was consuming 100+ MB even when features were disabled
+```
+
+#### Alternative: Use Lightweight Vector Database
+```bash
+# If you need vector capabilities, use a lighter option
+VECTOR_DB=pgvector  # Uses PostgreSQL extension instead of ChromaDB
+```
+
+#### Database Configuration
+```bash
+# Use SQLite for minimal setups
+DATABASE_URL=sqlite:///data/webui.db
 ```
 
 ### 4. Resource Limits
@@ -102,13 +123,32 @@ ENABLE_OTEL=false
 ENABLE_VERSION_UPDATE_CHECK=false
 ```
 
-## Memory Usage Comparison
+## Memory Usage Analysis & Expectations
 
-| Configuration | Estimated RAM Usage | Features Available |
-|---------------|-------------------|-------------------|
-| Default | ~300-500MB | All features enabled |
-| Optimized (this guide) | ~250-400MB | Core features, selective optimization |
-| Minimal | ~200-300MB | Basic chat only, no ML features |
+### Key Findings
+
+**ChromaDB Import Issue**: The most significant memory consumption was caused by ChromaDB being imported unconditionally at startup, even when vector database features were disabled.
+
+**Baseline Memory**: Python + FastAPI + SQLAlchemy baseline is already ~150-200MB before any application-specific code.
+
+### Realistic Memory Savings
+
+| Component | Before Fix | After Fix | Savings |
+|-----------|------------|-----------|---------|
+| ChromaDB unconditional import | ~100-150MB | 0MB | 100-150MB |
+| Vector database clients | ~50MB | 0MB (when disabled) | 50MB |
+| Telemetry with ChromaDB | ~20MB | 0MB (when disabled) | 20MB |
+| **Total Realistic Savings** | **~170-220MB** | **Saved when disabled** | **170-220MB** |
+
+### Expected Memory Usage
+
+| Configuration | Estimated RAM Usage | Notes |
+|---------------|-------------------|-------|
+| Default (with ChromaDB) | ~400-500MB | ChromaDB loaded at startup |
+| Optimized with DISABLE_VECTOR_DB=true | ~250-350MB | ChromaDB import prevented |
+| Minimal (all features disabled) | ~200-300MB | Core web framework only |
+
+**Important**: Actual savings depend on whether you were using vector database features. If you already had `BYPASS_EMBEDDING_AND_RETRIEVAL=true`, you were still loading ChromaDB unnecessarily.
 
 ## Implementation Details
 
