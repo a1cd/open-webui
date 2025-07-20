@@ -34,6 +34,7 @@ def main(
 def serve(
     host: str = "0.0.0.0",
     port: int = 8080,
+    use_gunicorn: bool = True,
 ):
     os.environ["FROM_INIT_PY"] = "true"
     if os.getenv("WEBUI_SECRET_KEY") is None:
@@ -73,15 +74,44 @@ def serve(
             os.environ["LD_LIBRARY_PATH"] = ":".join(LD_LIBRARY_PATH)
 
     import open_webui.main  # we need set environment variables before importing main
-    from open_webui.env import UVICORN_WORKERS  # Import the workers setting
-
-    uvicorn.run(
-        "open_webui.main:app",
-        host=host,
-        port=port,
-        forwarded_allow_ips="*",
-        workers=UVICORN_WORKERS,
-    )
+    
+    if use_gunicorn:
+        # Use gunicorn with uvicorn workers for better worker management
+        try:
+            import subprocess
+            import sys
+            from pathlib import Path
+            
+            # Find the gunicorn_conf.py file
+            config_file = Path(__file__).parent / "gunicorn_conf.py"
+            if not config_file.exists():
+                # Fallback to current directory
+                config_file = Path.cwd() / "gunicorn_conf.py"
+            
+            # Set environment variables for host and port
+            os.environ["HOST"] = host
+            os.environ["PORT"] = str(port)
+            
+            cmd = [
+                sys.executable, "-m", "gunicorn", "open_webui.main:app",
+                "-c", str(config_file)
+            ]
+            typer.echo(f"Starting with gunicorn: {' '.join(cmd)}")
+            subprocess.run(cmd)
+        except ImportError:
+            typer.echo("Gunicorn not available, falling back to uvicorn")
+            use_gunicorn = False
+    
+    if not use_gunicorn:
+        # Fallback to uvicorn
+        from open_webui.env import UVICORN_WORKERS  # Import the workers setting
+        uvicorn.run(
+            "open_webui.main:app",
+            host=host,
+            port=port,
+            forwarded_allow_ips="*",
+            workers=UVICORN_WORKERS,
+        )
 
 
 @app.command()
