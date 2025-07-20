@@ -13,10 +13,18 @@ class TestDebug(AbstractPostgresTest):
         data = response.json()
         assert "rss" in data
         assert "vms" in data
-        assert "top_memory_objects" in data
+        assert "top_memory_allocations" in data
+        assert "top_objects_by_memory" in data
+        assert "top_objects_by_count" in data
+        assert "total_objects" in data
+        assert "garbage_collected" in data
         assert isinstance(data["rss"], (int, float))
         assert isinstance(data["vms"], (int, float))
-        assert isinstance(data["top_memory_objects"], list)
+        assert isinstance(data["top_memory_allocations"], list)
+        assert isinstance(data["top_objects_by_memory"], list)
+        assert isinstance(data["top_objects_by_count"], list)
+        assert isinstance(data["total_objects"], int)
+        assert isinstance(data["garbage_collected"], int)
 
     def test_memory_endpoint_user_access_denied(self):
         """Test that regular users cannot access the memory endpoint"""
