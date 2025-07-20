@@ -85,6 +85,7 @@ from open_webui.routers import (
     tools,
     users,
     utils,
+    debug,
 )
 
 from open_webui.routers.retrieval import (
@@ -1177,6 +1178,7 @@ app.mount("/ws", socket_app)
 app.include_router(ollama.router, prefix="/ollama", tags=["ollama"])
 app.include_router(openai.router, prefix="/openai", tags=["openai"])
 
+app.include_router(debug.router, prefix="/debug", tags=["debug"])
 
 app.include_router(pipelines.router, prefix="/api/v1/pipelines", tags=["pipelines"])
 app.include_router(tasks.router, prefix="/api/v1/tasks", tags=["tasks"])
