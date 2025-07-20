@@ -25,12 +25,14 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
-import tiktoken
+from open_webui.utils.optimized_loading import LazyImport, get_module_attr
 
-
-from langchain.text_splitter import RecursiveCharacterTextSplitter, TokenTextSplitter
-from langchain_text_splitters import MarkdownHeaderTextSplitter
-from langchain_core.documents import Document
+# Lazy import heavy modules that are only needed when specific features are used
+tiktoken = LazyImport('tiktoken')
+RecursiveCharacterTextSplitter = get_module_attr('langchain.text_splitter', 'RecursiveCharacterTextSplitter')
+TokenTextSplitter = get_module_attr('langchain.text_splitter', 'TokenTextSplitter')
+MarkdownHeaderTextSplitter = get_module_attr('langchain_text_splitters', 'MarkdownHeaderTextSplitter')
+Document = get_module_attr('langchain_core.documents', 'Document')
 
 from open_webui.models.files import FileModel, Files
 from open_webui.models.knowledge import Knowledges
@@ -43,30 +45,30 @@ from open_webui.retrieval.vector.factory import VECTOR_DB_CLIENT
 from open_webui.retrieval.loaders.main import Loader
 from open_webui.retrieval.loaders.youtube import YoutubeLoader
 
-# Web search engines
-from open_webui.retrieval.web.main import SearchResult
-from open_webui.retrieval.web.utils import get_web_loader
-from open_webui.retrieval.web.brave import search_brave
-from open_webui.retrieval.web.kagi import search_kagi
-from open_webui.retrieval.web.mojeek import search_mojeek
-from open_webui.retrieval.web.bocha import search_bocha
-from open_webui.retrieval.web.duckduckgo import search_duckduckgo
-from open_webui.retrieval.web.google_pse import search_google_pse
-from open_webui.retrieval.web.jina_search import search_jina
-from open_webui.retrieval.web.searchapi import search_searchapi
-from open_webui.retrieval.web.serpapi import search_serpapi
-from open_webui.retrieval.web.searxng import search_searxng
-from open_webui.retrieval.web.yacy import search_yacy
-from open_webui.retrieval.web.serper import search_serper
-from open_webui.retrieval.web.serply import search_serply
-from open_webui.retrieval.web.serpstack import search_serpstack
-from open_webui.retrieval.web.tavily import search_tavily
-from open_webui.retrieval.web.bing import search_bing
-from open_webui.retrieval.web.exa import search_exa
-from open_webui.retrieval.web.perplexity import search_perplexity
-from open_webui.retrieval.web.sougou import search_sougou
-from open_webui.retrieval.web.firecrawl import search_firecrawl
-from open_webui.retrieval.web.external import search_external
+# Web search engines - lazy loaded as they're only used when specific engines are configured
+SearchResult = get_module_attr('open_webui.retrieval.web.main', 'SearchResult')
+get_web_loader = get_module_attr('open_webui.retrieval.web.utils', 'get_web_loader')
+search_brave = get_module_attr('open_webui.retrieval.web.brave', 'search_brave')
+search_kagi = get_module_attr('open_webui.retrieval.web.kagi', 'search_kagi')
+search_mojeek = get_module_attr('open_webui.retrieval.web.mojeek', 'search_mojeek')
+search_bocha = get_module_attr('open_webui.retrieval.web.bocha', 'search_bocha')
+search_duckduckgo = get_module_attr('open_webui.retrieval.web.duckduckgo', 'search_duckduckgo')
+search_google_pse = get_module_attr('open_webui.retrieval.web.google_pse', 'search_google_pse')
+search_jina = get_module_attr('open_webui.retrieval.web.jina_search', 'search_jina')
+search_searchapi = get_module_attr('open_webui.retrieval.web.searchapi', 'search_searchapi')
+search_serpapi = get_module_attr('open_webui.retrieval.web.serpapi', 'search_serpapi')
+search_searxng = get_module_attr('open_webui.retrieval.web.searxng', 'search_searxng')
+search_yacy = get_module_attr('open_webui.retrieval.web.yacy', 'search_yacy')
+search_serper = get_module_attr('open_webui.retrieval.web.serper', 'search_serper')
+search_serply = get_module_attr('open_webui.retrieval.web.serply', 'search_serply')
+search_serpstack = get_module_attr('open_webui.retrieval.web.serpstack', 'search_serpstack')
+search_tavily = get_module_attr('open_webui.retrieval.web.tavily', 'search_tavily')
+search_bing = get_module_attr('open_webui.retrieval.web.bing', 'search_bing')
+search_exa = get_module_attr('open_webui.retrieval.web.exa', 'search_exa')
+search_perplexity = get_module_attr('open_webui.retrieval.web.perplexity', 'search_perplexity')
+search_sougou = get_module_attr('open_webui.retrieval.web.sougou', 'search_sougou')
+search_firecrawl = get_module_attr('open_webui.retrieval.web.firecrawl', 'search_firecrawl')
+search_external = get_module_attr('open_webui.retrieval.web.external', 'search_external')
 
 from open_webui.retrieval.utils import (
     get_embedding_function,

@@ -16,11 +16,15 @@ from open_webui.constants import ERROR_MESSAGES
 from open_webui.env import ENABLE_FORWARD_USER_INFO_HEADERS, SRC_LOG_LEVELS
 from open_webui.routers.files import upload_file
 from open_webui.utils.auth import get_admin_user, get_verified_user
-from open_webui.utils.images.comfyui import (
-    ComfyUIGenerateImageForm,
-    ComfyUIWorkflow,
-    comfyui_generate_image,
-)
+
+# Lazy import heavy image processing libraries
+from open_webui.utils.optimized_loading import get_module_attr
+
+# These are only needed when image generation features are used
+ComfyUIGenerateImageForm = get_module_attr('open_webui.utils.images.comfyui', 'ComfyUIGenerateImageForm')
+ComfyUIWorkflow = get_module_attr('open_webui.utils.images.comfyui', 'ComfyUIWorkflow')
+comfyui_generate_image = get_module_attr('open_webui.utils.images.comfyui', 'comfyui_generate_image')
+
 from pydantic import BaseModel
 
 log = logging.getLogger(__name__)
