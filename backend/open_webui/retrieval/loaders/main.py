@@ -4,23 +4,25 @@ import ftfy
 import sys
 import json
 
-from langchain_community.document_loaders import (
-    AzureAIDocumentIntelligenceLoader,
-    BSHTMLLoader,
-    CSVLoader,
-    Docx2txtLoader,
-    OutlookMessageLoader,
-    PyPDFLoader,
-    TextLoader,
-    UnstructuredEPubLoader,
-    UnstructuredExcelLoader,
-    UnstructuredODTLoader,
-    UnstructuredPowerPointLoader,
-    UnstructuredRSTLoader,
-    UnstructuredXMLLoader,
-    YoutubeLoader,
-)
-from langchain_core.documents import Document
+from open_webui.utils.optimized_loading import get_module_attr
+
+# Lazy import document loaders - only loaded when specific file types are processed
+AzureAIDocumentIntelligenceLoader = get_module_attr('langchain_community.document_loaders', 'AzureAIDocumentIntelligenceLoader')
+BSHTMLLoader = get_module_attr('langchain_community.document_loaders', 'BSHTMLLoader')
+CSVLoader = get_module_attr('langchain_community.document_loaders', 'CSVLoader')
+Docx2txtLoader = get_module_attr('langchain_community.document_loaders', 'Docx2txtLoader')
+OutlookMessageLoader = get_module_attr('langchain_community.document_loaders', 'OutlookMessageLoader')
+PyPDFLoader = get_module_attr('langchain_community.document_loaders', 'PyPDFLoader')
+TextLoader = get_module_attr('langchain_community.document_loaders', 'TextLoader')
+UnstructuredEPubLoader = get_module_attr('langchain_community.document_loaders', 'UnstructuredEPubLoader')
+UnstructuredExcelLoader = get_module_attr('langchain_community.document_loaders', 'UnstructuredExcelLoader')
+UnstructuredODTLoader = get_module_attr('langchain_community.document_loaders', 'UnstructuredODTLoader')
+UnstructuredPowerPointLoader = get_module_attr('langchain_community.document_loaders', 'UnstructuredPowerPointLoader')
+UnstructuredRSTLoader = get_module_attr('langchain_community.document_loaders', 'UnstructuredRSTLoader')
+UnstructuredXMLLoader = get_module_attr('langchain_community.document_loaders', 'UnstructuredXMLLoader')
+YoutubeLoader = get_module_attr('langchain_community.document_loaders', 'YoutubeLoader')
+
+Document = get_module_attr('langchain_core.documents', 'Document')
 
 from open_webui.retrieval.loaders.external_document import ExternalDocumentLoader
 
