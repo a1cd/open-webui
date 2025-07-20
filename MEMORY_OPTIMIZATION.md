@@ -1,6 +1,6 @@
 # Memory Optimization Guide for Open WebUI
 
-This guide provides comprehensive instructions for reducing Open WebUI's memory usage from the default ~500MB to under 200MB, making it suitable for resource-constrained environments.
+This guide provides instructions for reducing Open WebUI's memory usage by avoiding heavy ML components and optional features, providing modest memory savings for resource-constrained environments.
 
 ## Quick Start - Memory Optimized Mode
 
@@ -106,9 +106,9 @@ ENABLE_VERSION_UPDATE_CHECK=false
 
 | Configuration | Estimated RAM Usage | Features Available |
 |---------------|-------------------|-------------------|
-| Default | ~500MB | All features enabled |
-| Minimal (this guide) | <200MB | Core chat functionality |
-| Ultra-minimal | <128MB | Basic chat only, no file uploads |
+| Default | ~300-500MB | All features enabled |
+| Optimized (this guide) | ~250-400MB | Core features, selective optimization |
+| Minimal | ~200-300MB | Basic chat only, no ML features |
 
 ## Implementation Details
 

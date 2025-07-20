@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # Open WebUI Memory-Optimized Startup Script
-# This script starts Open WebUI with optimizations to reduce memory usage from 500MB to under 200MB
+# This script starts Open WebUI with optimizations to reduce memory usage
 
 echo "Starting Open WebUI in memory-optimized mode..."
-echo "Target: Reduce memory usage from 500MB to under 200MB"
+echo "Target: Optimize memory usage for resource-constrained environments"
 
 # Load memory optimization environment variables
 if [ -f "memory-optimized.env" ]; then
