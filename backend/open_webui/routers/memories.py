@@ -15,9 +15,19 @@ log.setLevel(SRC_LOG_LEVELS["MODELS"])
 router = APIRouter()
 
 
+def ensure_embedding_function(request):
+    """Ensure embedding function is initialized before use"""
+    if hasattr(request.app.state, 'lazy_init_embedding_functions') and request.app.state.EMBEDDING_FUNCTION is None:
+        request.app.state.lazy_init_embedding_functions()
+    return request.app.state.EMBEDDING_FUNCTION
+
+
 @router.get("/ef")
 async def get_embeddings(request: Request):
-    return {"result": request.app.state.EMBEDDING_FUNCTION("hello world")}
+    embedding_function = ensure_embedding_function(request)
+    if embedding_function is None:
+        raise HTTPException(status_code=503, detail="Embedding function not available")
+    return {"result": embedding_function("hello world")}
 
 
 ############################
@@ -50,6 +60,10 @@ async def add_memory(
     user=Depends(get_verified_user),
 ):
     memory = Memories.insert_new_memory(user.id, form_data.content)
+    
+    embedding_function = ensure_embedding_function(request)
+    if embedding_function is None:
+        raise HTTPException(status_code=503, detail="Embedding function not available")
 
     VECTOR_DB_CLIENT.upsert(
         collection_name=f"user-memory-{user.id}",
@@ -57,7 +71,7 @@ async def add_memory(
             {
                 "id": memory.id,
                 "text": memory.content,
-                "vector": request.app.state.EMBEDDING_FUNCTION(
+                "vector": embedding_function(
                     memory.content, user=user
                 ),
                 "metadata": {"created_at": memory.created_at},
@@ -82,9 +96,13 @@ class QueryMemoryForm(BaseModel):
 async def query_memory(
     request: Request, form_data: QueryMemoryForm, user=Depends(get_verified_user)
 ):
+    embedding_function = ensure_embedding_function(request)
+    if embedding_function is None:
+        raise HTTPException(status_code=503, detail="Embedding function not available")
+        
     results = VECTOR_DB_CLIENT.search(
         collection_name=f"user-memory-{user.id}",
-        vectors=[request.app.state.EMBEDDING_FUNCTION(form_data.content, user=user)],
+        vectors=[embedding_function(form_data.content, user=user)],
         limit=form_data.k,
     )
 
@@ -99,6 +117,10 @@ async def reset_memory_from_vector_db(
     request: Request, user=Depends(get_verified_user)
 ):
     VECTOR_DB_CLIENT.delete_collection(f"user-memory-{user.id}")
+    
+    embedding_function = ensure_embedding_function(request)
+    if embedding_function is None:
+        raise HTTPException(status_code=503, detail="Embedding function not available")
 
     memories = Memories.get_memories_by_user_id(user.id)
     VECTOR_DB_CLIENT.upsert(
@@ -107,7 +129,7 @@ async def reset_memory_from_vector_db(
             {
                 "id": memory.id,
                 "text": memory.content,
-                "vector": request.app.state.EMBEDDING_FUNCTION(
+                "vector": embedding_function(
                     memory.content, user=user
                 ),
                 "metadata": {
@@ -160,13 +182,17 @@ async def update_memory_by_id(
         raise HTTPException(status_code=404, detail="Memory not found")
 
     if form_data.content is not None:
+        embedding_function = ensure_embedding_function(request)
+        if embedding_function is None:
+            raise HTTPException(status_code=503, detail="Embedding function not available")
+            
         VECTOR_DB_CLIENT.upsert(
             collection_name=f"user-memory-{user.id}",
             items=[
                 {
                     "id": memory.id,
                     "text": memory.content,
-                    "vector": request.app.state.EMBEDDING_FUNCTION(
+                    "vector": embedding_function(
                         memory.content, user=user
                     ),
                     "metadata": {

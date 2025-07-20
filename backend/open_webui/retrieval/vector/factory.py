@@ -11,6 +11,9 @@ class Vector:
         get vector db instance by vector type
         """
         match vector_type:
+            case VectorType.DISABLED:
+                # Return a no-op client for memory optimization
+                return None
             case VectorType.MILVUS:
                 from open_webui.retrieval.vector.dbs.milvus import MilvusClient
 
@@ -52,4 +55,28 @@ class Vector:
                 raise ValueError(f"Unsupported vector type: {vector_type}")
 
 
-VECTOR_DB_CLIENT = Vector.get_vector(VECTOR_DB)
+# Lazy-loaded vector database client
+_vector_db_client = None
+
+def get_vector_db_client():
+    """Get vector database client with lazy loading"""
+    global _vector_db_client
+    if _vector_db_client is None:
+        _vector_db_client = Vector.get_vector(VECTOR_DB)
+    return _vector_db_client
+
+# For backward compatibility - lazy loading with null protection
+class VectorDBClientLazy:
+    def __getattr__(self, name):
+        client = get_vector_db_client()
+        if client is None:
+            raise RuntimeError("Vector database is disabled (DISABLE_VECTOR_DB=true)")
+        return getattr(client, name)
+    
+    def __call__(self, *args, **kwargs):
+        client = get_vector_db_client()
+        if client is None:
+            raise RuntimeError("Vector database is disabled (DISABLE_VECTOR_DB=true)")
+        return client(*args, **kwargs)
+
+VECTOR_DB_CLIENT = VectorDBClientLazy()
